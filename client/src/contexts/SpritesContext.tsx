@@ -55,7 +55,7 @@ export const SpritesProvider: React.FC<{ children: React.ReactNode }> = ({ child
       x: Math.random() * 100 - 50, // Random position
       y: Math.random() * 100 - 50,
       direction: 90,
-      color: generateRandomColor(),
+      color: generateRandomColor(sprites), // Pass existing sprites to ensure unique color
       originalX: 0,
       originalY: 0,
       originalDirection: 90,
