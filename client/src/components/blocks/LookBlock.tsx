@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { useBlocks } from "@/contexts/BlocksContext";
 import { useSprites } from "@/contexts/SpritesContext";
 import { BlockType, LookBlockAction } from "@/utils/blockTypes";
@@ -32,6 +32,16 @@ const LookBlock: React.FC<LookBlockProps> = ({
   
   // Get current sprite ID from the context
   const currentSpriteId = sprites.length > 0 ? sprites[0].id : "";
+  
+  // Initialize state with the default or existing values
+  // Use useEffect to update the state when defaultMessage or defaultSeconds change
+  React.useEffect(() => {
+    setMessage(defaultMessage);
+  }, [defaultMessage]);
+  
+  React.useEffect(() => {
+    setSeconds(defaultSeconds);
+  }, [defaultSeconds]);
   
   // Handle drag start event
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
@@ -80,16 +90,26 @@ const LookBlock: React.FC<LookBlockProps> = ({
     e.currentTarget.classList.remove("opacity-50");
   };
   
+  // State variables to track input values for both placed and new blocks
+  const [message, setMessage] = useState<string>(defaultMessage);
+  const [seconds, setSeconds] = useState<number>(defaultSeconds);
+  
   // Handle parameter changes
   const handleMessageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setMessage(newValue);
+    
     if (blockId && placed) {
-      updateBlockParam(blockId, "message", e.target.value);
+      updateBlockParam(blockId, "message", newValue);
     }
   };
   
   const handleSecondsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = Number(e.target.value) || 1;
+    setSeconds(newValue);
+    
     if (blockId && placed) {
-      updateBlockParam(blockId, "seconds", Number(e.target.value) || 1);
+      updateBlockParam(blockId, "seconds", newValue);
     }
   };
   
@@ -146,7 +166,7 @@ const LookBlock: React.FC<LookBlockProps> = ({
           ref={inputRef}
           type="text"
           className="bg-purple-300 px-2 py-1 text-black text-sm rounded-md w-20"
-          value={defaultMessage}
+          value={message}
           placeholder="message"
           onChange={handleMessageChange}
           onDragStart={handleInputDragStart}
@@ -163,7 +183,7 @@ const LookBlock: React.FC<LookBlockProps> = ({
               ref={secondsInputRef}
               type="number"
               className="bg-purple-300 px-2 py-1 text-black text-sm rounded-md w-10"
-              value={defaultSeconds}
+              value={seconds}
               min="1"
               max="10"
               onChange={handleSecondsChange}
