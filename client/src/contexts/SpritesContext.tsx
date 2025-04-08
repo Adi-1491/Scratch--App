@@ -17,15 +17,16 @@ interface SpritesContextType extends SpritesState {
 const SpritesContext = createContext<SpritesContextType | undefined>(undefined);
 
 // Default sprites to start with
+// Direction: 0° = up, 90° = right, 180° = down, 270° = left
 const defaultSprites: Sprite[] = [
   {
     id: "sprite-1",
     name: "Sprite 1",
-    x: 0,
+    x: -100,
     y: 0,
-    direction: 90,
+    direction: 90, // Facing right
     color: "#FF5722",
-    originalX: 0,
+    originalX: -100,
     originalY: 0,
     originalDirection: 90,
   },
@@ -34,7 +35,7 @@ const defaultSprites: Sprite[] = [
     name: "Sprite 2",
     x: 100,
     y: 0,
-    direction: 270,
+    direction: 270, // Facing left
     color: "#2196F3",
     originalX: 100,
     originalY: 0,

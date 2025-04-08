@@ -172,10 +172,13 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
         case "MOTION":
           switch (block.action) {
             case "MOVE":
+              // In our coordinate system: 
+              // 0° = up, 90° = right, 180° = down, 270° = left
+              // Adjust 90° to point right
               const angle = sprite.direction * (Math.PI / 180); // Convert to radians
-              const deltaX = Math.cos(angle) * block.params.steps;
-              const deltaY = Math.sin(angle) * block.params.steps;
-              updateSpritePosition(sprite.id, sprite.x + deltaX, sprite.y - deltaY);
+              const deltaX = Math.sin(angle) * block.params.steps;
+              const deltaY = -Math.cos(angle) * block.params.steps;
+              updateSpritePosition(sprite.id, sprite.x + deltaX, sprite.y + deltaY);
               
               // Mark as executed
               setExecutionState(prev => ({
