@@ -1,6 +1,7 @@
 import React from "react";
 import { useSprites } from "@/contexts/SpritesContext";
 import SpriteItem from "./SpriteItem";
+import { useBlocks } from "@/contexts/BlocksContext";
 
 interface SpriteListProps {
   activeSprite: string;
@@ -8,11 +9,25 @@ interface SpriteListProps {
 }
 
 const SpriteList: React.FC<SpriteListProps> = ({ activeSprite, onSelectSprite }) => {
-  const { sprites, addSprite } = useSprites();
+  const { sprites, addSprite, removeSprite } = useSprites();
+  const { programBlocks } = useBlocks();
 
   const handleAddSprite = () => {
     const newSpriteId = addSprite();
     onSelectSprite(newSpriteId);
+  };
+
+  const handleDeleteSprite = (id: string) => {
+    // If this is the current active sprite, select another one
+    if (id === activeSprite) {
+      const remainingSprites = sprites.filter(s => s.id !== id);
+      if (remainingSprites.length > 0) {
+        onSelectSprite(remainingSprites[0].id);
+      }
+    }
+    
+    // Remove the sprite
+    removeSprite(id);
   };
 
   return (
@@ -24,6 +39,8 @@ const SpriteList: React.FC<SpriteListProps> = ({ activeSprite, onSelectSprite })
             sprite={sprite}
             active={sprite.id === activeSprite}
             onClick={() => onSelectSprite(sprite.id)}
+            onDelete={handleDeleteSprite}
+            canDelete={sprites.length > 1} // Prevent deleting the last sprite
           />
         ))}
       </div>

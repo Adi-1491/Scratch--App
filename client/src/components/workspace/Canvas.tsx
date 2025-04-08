@@ -20,6 +20,7 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
   
   // Update sprite positions based on their running programs
   useEffect(() => {
+    // Clear collision indication when not playing
     if (!isPlaying) {
       setCollisionIndication({ ...collisionIndication, visible: false });
       return;
@@ -34,6 +35,9 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
       
       if (spriteBlocks.length > 0) {
         const interval = setInterval(() => {
+          // Skip execution if playing state has changed
+          if (!isPlaying) return;
+          
           // Execute sprite's program
           executeSpriteProgram(sprite.id, spriteBlocks);
           
@@ -55,7 +59,7 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
                 
                 // Hide collision indication after 1 second
                 setTimeout(() => {
-                  setCollisionIndication({ ...collisionIndication, visible: false });
+                  setCollisionIndication(prev => ({ ...prev, visible: false }));
                 }, 1000);
               }
             }
@@ -67,7 +71,7 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
     });
     
     return () => {
-      // Clean up all animation intervals
+      // Clean up all animation intervals when the component unmounts or isPlaying changes
       animationIntervals.forEach(interval => clearInterval(interval));
     };
   }, [isPlaying, sprites, programBlocks, onCollision]);
