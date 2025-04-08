@@ -25,7 +25,7 @@ const LookBlock: React.FC<LookBlockProps> = ({
   defaultSeconds = 2,
   children
 }) => {
-  const { addBlock, updateBlockParam } = useBlocks();
+  const { addBlock, updateBlockParam, removeBlock } = useBlocks();
   const { sprites } = useSprites();
   const inputRef = useRef<HTMLInputElement>(null);
   const secondsInputRef = useRef<HTMLInputElement>(null);
@@ -35,11 +35,33 @@ const LookBlock: React.FC<LookBlockProps> = ({
   
   // Handle drag start event
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
-    if (placed) return; // Prevent dragging placed blocks
-    
-    // Mark that this is a new block being dragged (not an existing one)
-    e.dataTransfer.setData("blockType", BlockType.LOOK);
-    e.dataTransfer.setData("blockAction", type);
+    if (placed && blockId) {
+      // If the block is already placed, allow moving it
+      e.dataTransfer.setData(
+        "text/plain",
+        JSON.stringify({
+          type: BlockType.LOOK,
+          action: type,
+          id: blockId,
+          isMoving: true,
+          parentId,
+          index,
+        })
+      );
+    } else {
+      // Otherwise create a new block
+      e.dataTransfer.setData(
+        "text/plain",
+        JSON.stringify({
+          type: BlockType.LOOK,
+          action: type,
+          params: {
+            message: defaultMessage,
+            seconds: type === LookBlockAction.SAY_FOR_SECONDS ? defaultSeconds : undefined
+          }
+        })
+      );
+    }
     
     // Create a custom drag ghost
     const ghost = createDragGhost(e.currentTarget);
@@ -49,6 +71,13 @@ const LookBlock: React.FC<LookBlockProps> = ({
     setTimeout(() => {
       document.body.removeChild(ghost);
     }, 0);
+    
+    e.currentTarget.classList.add("opacity-50");
+  };
+  
+  // Handle drag end event
+  const handleDragEnd = (e: React.DragEvent) => {
+    e.currentTarget.classList.remove("opacity-50");
   };
   
   // Handle parameter changes
@@ -61,6 +90,15 @@ const LookBlock: React.FC<LookBlockProps> = ({
   const handleSecondsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (blockId && placed) {
       updateBlockParam(blockId, "seconds", Number(e.target.value) || 1);
+    }
+  };
+  
+  // Handle deleting the block
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (blockId) {
+      removeBlock(blockId);
     }
   };
   
@@ -82,11 +120,12 @@ const LookBlock: React.FC<LookBlockProps> = ({
   return (
     <div
       id={blockId ? `block-${blockId}` : undefined}
-      className={`mb-2 rounded-md cursor-grab active:cursor-grabbing flex ${
+      className={`mb-2 rounded-md cursor-grab active:cursor-grabbing flex relative ${
         placed ? "shadow-md" : ""
       }`}
-      draggable={!placed}
+      draggable={true}
       onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       onClick={handleBlockClick}
       data-block-id={blockId}
       data-block-type={BlockType.LOOK}
@@ -107,7 +146,7 @@ const LookBlock: React.FC<LookBlockProps> = ({
           ref={inputRef}
           type="text"
           className="bg-purple-300 px-2 py-1 text-black text-sm rounded-md w-20"
-          value={blockId && placed ? "" : defaultMessage}
+          value={defaultMessage}
           placeholder="message"
           onChange={handleMessageChange}
           onDragStart={handleInputDragStart}
@@ -124,7 +163,7 @@ const LookBlock: React.FC<LookBlockProps> = ({
               ref={secondsInputRef}
               type="number"
               className="bg-purple-300 px-2 py-1 text-black text-sm rounded-md w-10"
-              value={blockId && placed ? "" : defaultSeconds}
+              value={defaultSeconds}
               min="1"
               max="10"
               onChange={handleSecondsChange}
@@ -139,6 +178,19 @@ const LookBlock: React.FC<LookBlockProps> = ({
       
       {type === LookBlockAction.SAY && (
         <div className="bg-purple-400 rounded-r-md w-3"></div>
+      )}
+      
+      {/* Delete button - only show for placed blocks */}
+      {placed && blockId && (
+        <button
+          onClick={handleDelete}
+          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition-colors shadow-sm"
+          title="Remove block"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+          </svg>
+        </button>
       )}
       
       {children}
