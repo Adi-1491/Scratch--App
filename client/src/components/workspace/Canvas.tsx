@@ -1,7 +1,9 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import { useSprites } from "@/contexts/SpritesContext";
 import { useBlocks } from "@/contexts/BlocksContext";
 import { detectCollision } from "@/utils/collisionDetection";
+import { Sprite } from "@/utils/sprites";
+import { toast } from "@/hooks/use-toast";
 
 interface CanvasProps {
   isPlaying: boolean;
@@ -21,7 +23,7 @@ interface SpriteExecutionState {
 
 const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
   const { sprites, updateSpritePosition, resetSpritePositions } = useSprites();
-  const { programBlocks } = useBlocks();
+  const { programBlocks, swapSpriteAnimations } = useBlocks();
   const canvasRef = useRef<HTMLDivElement>(null);
   
   // State to track execution of blocks to avoid continuous movement
@@ -37,6 +39,9 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
     y: 0,
     visible: false
   });
+  
+  // State to track recently collided sprites to prevent multiple swaps
+  const [recentlyCollidedPairs, setRecentlyCollidedPairs] = useState<Set<string>>(new Set());
   
   // State for coordinate display
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -78,11 +83,15 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
       });
       
       setExecutionState(newState);
+      // Clear recently collided pairs when starting the program
+      setRecentlyCollidedPairs(new Set());
     } else {
       // Reset execution state when stopped
       setExecutionState({});
       // Clear collision indication
       setCollisionIndication(prev => ({ ...prev, visible: false }));
+      // Clear recently collided pairs
+      setRecentlyCollidedPairs(new Set());
     }
   }, [isPlaying]);
   
@@ -99,6 +108,66 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
     executionStateRef.current = executionState;
   }, [executionState]);
   
+  // Function to handle collision swap
+  const handleCollisionSwap = useCallback((sprite1Id: string, sprite2Id: string) => {
+    const sprite1 = sprites.find(s => s.id === sprite1Id);
+    const sprite2 = sprites.find(s => s.id === sprite2Id);
+    
+    if (!sprite1 || !sprite2) return;
+    
+    // Create a unique ID for this collision pair
+    const spritePair = [sprite1Id, sprite2Id].sort();
+    const collisionPairId = `${spritePair[0]}-${spritePair[1]}`;
+    
+    // Only swap animations if we haven't already for this collision pair
+    if (!recentlyCollidedPairs.has(collisionPairId)) {
+      // Swap the animations between the two sprites
+      swapSpriteAnimations(sprite1Id, sprite2Id);
+      
+      // Show a notification to the user
+      toast({
+        title: "Animations Swapped!",
+        description: `${sprite1.name} and ${sprite2.name} have swapped their animation blocks.`,
+        variant: "default",
+      });
+      
+      // Mark this pair as recently collided to prevent multiple swaps
+      setRecentlyCollidedPairs(prev => {
+        const newSet = new Set(prev);
+        newSet.add(collisionPairId);
+        return newSet;
+      });
+      
+      // Reset the execution state to run the swapped blocks
+      setExecutionState(prevState => {
+        const newState = { ...prevState };
+        
+        // Reset all blocks to not executed for both sprites
+        if (newState[sprite1Id]) {
+          Object.keys(newState[sprite1Id]).forEach(blockId => {
+            newState[sprite1Id][blockId] = {
+              ...newState[sprite1Id][blockId],
+              executed: false,
+              currentRepeat: 0
+            };
+          });
+        }
+        
+        if (newState[sprite2Id]) {
+          Object.keys(newState[sprite2Id]).forEach(blockId => {
+            newState[sprite2Id][blockId] = {
+              ...newState[sprite2Id][blockId],
+              executed: false,
+              currentRepeat: 0
+            };
+          });
+        }
+        
+        return newState;
+      });
+    }
+  }, [sprites, recentlyCollidedPairs, swapSpriteAnimations]);
+
   // Update sprite positions based on their running programs
   useEffect(() => {
     if (!isPlaying) {
@@ -136,6 +205,9 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
                 
                 onCollision(sprite.id, otherSprite.id);
                 
+                // Handle collision swap using our extracted function
+                handleCollisionSwap(sprite.id, otherSprite.id);
+                
                 // Hide collision indication after 1 second
                 setTimeout(() => {
                   setCollisionIndication(prev => ({ ...prev, visible: false }));
@@ -153,7 +225,7 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
       // Clean up all animation intervals when the component unmounts or isPlaying changes
       animationIntervals.forEach(interval => clearInterval(interval));
     };
-  }, [isPlaying, sprites, onCollision]);
+  }, [isPlaying, sprites, onCollision, handleCollisionSwap]);
   
   // We've removed the automatic position reset when stopping
   // This allows the sprites to maintain their positions when the program is stopped

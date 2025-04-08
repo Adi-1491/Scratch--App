@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { BlockType } from "@/utils/blockTypes";
+import { toast } from "@/hooks/use-toast";
 
 interface Block {
   id: string;
@@ -210,7 +211,7 @@ export const BlocksProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const sprite2Blocks = [...(prevBlocks[spriteId2] || [])];
       
       // Update sprite IDs for all blocks and their children
-      const updateSpriteId = (blocks: Block[], newSpriteId: string) => {
+      const updateSpriteId = (blocks: Block[], newSpriteId: string): Block[] => {
         return blocks.map(block => ({
           ...block,
           spriteId: newSpriteId,
@@ -220,6 +221,8 @@ export const BlocksProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       
       newBlocks[spriteId1] = updateSpriteId(sprite2Blocks, spriteId1);
       newBlocks[spriteId2] = updateSpriteId(sprite1Blocks, spriteId2);
+      
+      // Show a toast notification (done in Canvas.tsx to avoid duplicates)
       
       return newBlocks;
     });
