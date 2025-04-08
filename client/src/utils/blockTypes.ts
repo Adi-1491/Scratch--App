@@ -15,8 +15,7 @@ export enum ControlBlockAction {
 }
 
 export enum LookBlockAction {
-  SAY = "SAY",
-  SAY_FOR_SECONDS = "SAY_FOR_SECONDS"
+  SAY = "SAY"
 }
 
 export interface BlockParams {

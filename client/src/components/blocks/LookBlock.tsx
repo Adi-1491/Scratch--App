@@ -11,7 +11,6 @@ interface LookBlockProps {
   parentId?: string | null;
   blockId?: string;
   defaultMessage?: string;
-  defaultSeconds?: number;
   children?: React.ReactNode;
 }
 
@@ -22,26 +21,20 @@ const LookBlock: React.FC<LookBlockProps> = ({
   parentId = null,
   blockId,
   defaultMessage = "Hello!",
-  defaultSeconds = 2,
   children
 }) => {
   const { addBlock, updateBlockParam, removeBlock } = useBlocks();
   const { sprites } = useSprites();
   const inputRef = useRef<HTMLInputElement>(null);
-  const secondsInputRef = useRef<HTMLInputElement>(null);
   
   // Get current sprite ID from the context
   const currentSpriteId = sprites.length > 0 ? sprites[0].id : "";
   
   // Initialize state with the default or existing values
-  // Use useEffect to update the state when defaultMessage or defaultSeconds change
+  // Use useEffect to update the state when defaultMessage changes
   React.useEffect(() => {
     setMessage(defaultMessage);
   }, [defaultMessage]);
-  
-  React.useEffect(() => {
-    setSeconds(defaultSeconds);
-  }, [defaultSeconds]);
   
   // Handle drag start event
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
@@ -66,8 +59,7 @@ const LookBlock: React.FC<LookBlockProps> = ({
           type: BlockType.LOOK,
           action: type,
           params: {
-            message: defaultMessage,
-            seconds: type === LookBlockAction.SAY_FOR_SECONDS ? defaultSeconds : undefined
+            message: defaultMessage
           }
         })
       );
@@ -92,7 +84,6 @@ const LookBlock: React.FC<LookBlockProps> = ({
   
   // State variables to track input values for both placed and new blocks
   const [message, setMessage] = useState<string>(defaultMessage);
-  const [seconds, setSeconds] = useState<number>(defaultSeconds);
   
   // Handle parameter changes
   const handleMessageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -101,15 +92,6 @@ const LookBlock: React.FC<LookBlockProps> = ({
     
     if (blockId && placed) {
       updateBlockParam(blockId, "message", newValue);
-    }
-  };
-  
-  const handleSecondsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = Number(e.target.value) || 1;
-    setSeconds(newValue);
-    
-    if (blockId && placed) {
-      updateBlockParam(blockId, "seconds", newValue);
     }
   };
   
@@ -131,8 +113,6 @@ const LookBlock: React.FC<LookBlockProps> = ({
   const handleBlockClick = () => {
     if (type === LookBlockAction.SAY && inputRef.current) {
       inputRef.current.focus();
-    } else if (type === LookBlockAction.SAY_FOR_SECONDS) {
-      if (inputRef.current) inputRef.current.focus();
     }
   };
   
@@ -173,28 +153,7 @@ const LookBlock: React.FC<LookBlockProps> = ({
         />
       </div>
       
-      {type === LookBlockAction.SAY_FOR_SECONDS && (
-        <>
-          <div className="bg-purple-400 p-2 flex items-center">
-            <span className="text-white">for</span>
-          </div>
-          <div className="bg-purple-400 p-2 flex items-center">
-            <input
-              ref={secondsInputRef}
-              type="number"
-              className="bg-purple-300 px-2 py-1 text-black text-sm rounded-md w-10"
-              value={seconds}
-              min="1"
-              max="10"
-              onChange={handleSecondsChange}
-              onDragStart={handleInputDragStart}
-            />
-          </div>
-          <div className="bg-purple-400 rounded-r-md p-2 flex items-center">
-            <span className="text-white">seconds</span>
-          </div>
-        </>
-      )}
+
       
       {type === LookBlockAction.SAY && (
         <div className="bg-purple-400 rounded-r-md w-3"></div>

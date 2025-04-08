@@ -363,47 +363,7 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
               }));
               break;
               
-            case "SAY_FOR_SECONDS":
-              // Make the sprite say something for a specific time
-              const tempMessage = block.params.message || "Hello!";
-              const seconds = block.params.seconds || 2;
-              
-              // Clear any existing timeouts
-              if (speechBubbles[spriteId]?.timeoutId) {
-                clearTimeout(speechBubbles[spriteId].timeoutId);
-              }
-              
-              // Create a new timeout
-              const timeoutId = setTimeout(() => {
-                setSpeechBubbles(prev => ({
-                  ...prev,
-                  [spriteId]: {
-                    ...prev[spriteId],
-                    visible: false,
-                    timeoutId: undefined
-                  }
-                }));
-              }, seconds * 1000);
-              
-              // Display the speech bubble
-              setSpeechBubbles(prev => ({
-                ...prev,
-                [spriteId]: {
-                  message: tempMessage,
-                  visible: true,
-                  timeoutId
-                }
-              }));
-              
-              // Mark as executed
-              setExecutionState(prev => ({
-                ...prev,
-                [spriteId]: {
-                  ...prev[spriteId],
-                  [block.id]: { ...prev[spriteId]?.[block.id], executed: true }
-                }
-              }));
-              break;
+
           }
           break;
           

@@ -76,7 +76,6 @@ const Scratchpad: React.FC = () => {
               </h3>
               
               <LookBlock type={LookBlockAction.SAY} />
-              <LookBlock type={LookBlockAction.SAY_FOR_SECONDS} />
             </div>
             
             <div className="mb-4">
