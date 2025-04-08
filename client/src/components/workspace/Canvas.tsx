@@ -8,21 +8,79 @@ interface CanvasProps {
   onCollision: (sprite1Id: string, sprite2Id: string) => void;
 }
 
+// Track execution state for each sprite's blocks
+interface SpriteExecutionState {
+  [spriteId: string]: {
+    [blockId: string]: {
+      executed: boolean;
+      repeatCount?: number;
+      currentRepeat?: number;
+    };
+  };
+}
+
 const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
-  const { sprites, updateSpritePosition } = useSprites();
+  const { sprites, updateSpritePosition, resetSpritePositions } = useSprites();
   const { programBlocks } = useBlocks();
   const canvasRef = useRef<HTMLDivElement>(null);
-  const [collisionIndication, setCollisionIndication] = useState<{ x: number, y: number, visible: boolean }>({
+  
+  // State to track execution of blocks to avoid continuous movement
+  const [executionState, setExecutionState] = useState<SpriteExecutionState>({});
+  
+  // State to track collision indications
+  const [collisionIndication, setCollisionIndication] = useState<{ 
+    x: number, 
+    y: number, 
+    visible: boolean 
+  }>({
     x: 0,
     y: 0,
     visible: false
   });
   
+  // State for coordinate display
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  
+  // Reset execution state when play/stop state changes
+  useEffect(() => {
+    if (isPlaying) {
+      // Initialize execution state for all blocks
+      const newState: SpriteExecutionState = {};
+      
+      // Set all blocks to not executed yet
+      Object.keys(programBlocks).forEach(spriteId => {
+        newState[spriteId] = {};
+        
+        const initializeBlockState = (blocks: any[]) => {
+          blocks.forEach(block => {
+            newState[spriteId][block.id] = { 
+              executed: false,
+              repeatCount: block.params?.repeatCount || 1,
+              currentRepeat: 0
+            };
+            
+            // Initialize child blocks for control blocks
+            if (block.children && block.children.length > 0) {
+              initializeBlockState(block.children);
+            }
+          });
+        };
+        
+        initializeBlockState(programBlocks[spriteId] || []);
+      });
+      
+      setExecutionState(newState);
+    } else {
+      // Reset execution state when stopped
+      setExecutionState({});
+      // Clear collision indication
+      setCollisionIndication({ ...collisionIndication, visible: false });
+    }
+  }, [isPlaying, programBlocks]);
+  
   // Update sprite positions based on their running programs
   useEffect(() => {
-    // Clear collision indication when not playing
     if (!isPlaying) {
-      setCollisionIndication({ ...collisionIndication, visible: false });
       return;
     }
 
@@ -74,13 +132,25 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
       // Clean up all animation intervals when the component unmounts or isPlaying changes
       animationIntervals.forEach(interval => clearInterval(interval));
     };
-  }, [isPlaying, sprites, programBlocks, onCollision]);
+  }, [isPlaying, sprites, programBlocks, onCollision, executionState]);
+  
+  // Handler for stopping - ensure positions are reset
+  useEffect(() => {
+    if (!isPlaying) {
+      resetSpritePositions();
+    }
+  }, [isPlaying, resetSpritePositions]);
   
   const executeSpriteProgram = (spriteId: string, blocks: any[]) => {
     const sprite = sprites.find(s => s.id === spriteId);
     if (!sprite) return;
     
     blocks.forEach(block => {
+      // Skip if this block has already been executed
+      if (executionState[spriteId]?.[block.id]?.executed) {
+        return;
+      }
+      
       switch (block.type) {
         case "MOTION":
           switch (block.action) {
@@ -89,21 +159,69 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
               const deltaX = Math.cos(angle) * block.params.steps;
               const deltaY = Math.sin(angle) * block.params.steps;
               updateSpritePosition(sprite.id, sprite.x + deltaX, sprite.y - deltaY);
+              
+              // Mark as executed
+              setExecutionState(prev => ({
+                ...prev,
+                [spriteId]: {
+                  ...prev[spriteId],
+                  [block.id]: { ...prev[spriteId]?.[block.id], executed: true }
+                }
+              }));
               break;
+              
             case "TURN":
               const newDirection = (sprite.direction + block.params.degrees) % 360;
               updateSpritePosition(sprite.id, sprite.x, sprite.y, newDirection);
+              
+              // Mark as executed
+              setExecutionState(prev => ({
+                ...prev,
+                [spriteId]: {
+                  ...prev[spriteId],
+                  [block.id]: { ...prev[spriteId]?.[block.id], executed: true }
+                }
+              }));
               break;
+              
             case "GOTO":
               updateSpritePosition(sprite.id, block.params.x, block.params.y);
+              
+              // Mark as executed
+              setExecutionState(prev => ({
+                ...prev,
+                [spriteId]: {
+                  ...prev[spriteId],
+                  [block.id]: { ...prev[spriteId]?.[block.id], executed: true }
+                }
+              }));
               break;
           }
           break;
+          
         case "CONTROL":
           if (block.action === "REPEAT" && block.children) {
-            // For simplicity, we just execute children blocks once per animation frame
-            // In a complete implementation, we'd track repetition count
-            executeSpriteProgram(spriteId, block.children);
+            const blockState = executionState[spriteId]?.[block.id];
+            const repeatCount = block.params.repeatCount || 1;
+            const currentRepeat = blockState?.currentRepeat || 0;
+            
+            if (currentRepeat < repeatCount) {
+              // Execute children blocks
+              executeSpriteProgram(spriteId, block.children);
+              
+              // Increment repeat counter
+              setExecutionState(prev => ({
+                ...prev,
+                [spriteId]: {
+                  ...prev[spriteId],
+                  [block.id]: { 
+                    ...prev[spriteId]?.[block.id], 
+                    currentRepeat: currentRepeat + 1,
+                    executed: currentRepeat + 1 >= repeatCount
+                  }
+                }
+              }));
+            }
           }
           break;
       }
@@ -129,6 +247,25 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
     };
   };
 
+  // Get current position display
+  const getMouseCoordinates = (e: React.MouseEvent) => {
+    if (!canvasRef.current) return { x: 0, y: 0 };
+    
+    const rect = canvasRef.current.getBoundingClientRect();
+    const canvasWidth = rect.width;
+    const canvasHeight = rect.height;
+    
+    // Calculate position relative to center
+    const x = Math.round(e.clientX - rect.left - canvasWidth / 2);
+    const y = Math.round(canvasHeight / 2 - (e.clientY - rect.top)); // Invert Y
+    
+    return { x, y };
+  };
+  
+  const handleMouseMove = (e: React.MouseEvent) => {
+    setMousePosition(getMouseCoordinates(e));
+  };
+
   return (
     <div id="canvas-area" className="bg-white border border-gray-200 rounded-lg p-4 relative">
       <h3 className="text-sm font-medium text-gray-700 mb-2">Canvas</h3>
@@ -139,6 +276,7 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
           backgroundSize: "20px 20px",
           backgroundImage: "linear-gradient(to right, rgba(200, 200, 200, 0.1) 1px, transparent 1px), linear-gradient(to bottom, rgba(200, 200, 200, 0.1) 1px, transparent 1px)"
         }}
+        onMouseMove={handleMouseMove}
       >
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10">
           <svg className="w-20 h-20 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
@@ -148,8 +286,8 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
         
         {/* Position coordinates display */}
         <div className="absolute bottom-2 left-2 px-2 py-1 bg-gray-800 bg-opacity-70 text-white text-xs rounded">
-          <span className="mr-2">x: 0</span>
-          <span>y: 0</span>
+          <span className="mr-2">x: {mousePosition.x}</span>
+          <span>y: {mousePosition.y}</span>
         </div>
         
         {/* Render all sprites */}
