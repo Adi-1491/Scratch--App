@@ -29,11 +29,15 @@ const SpriteItem: React.FC<SpriteItemProps> = ({
       onClick={onClick}
     >
       <div className="flex items-center space-x-3">
-        <div 
-          className="w-10 h-10 rounded-full shadow-sm flex items-center justify-center"
-          style={{ backgroundColor: sprite.color }}
-        >
-          <span className="text-white font-bold">{sprite.name.charAt(0)}</span>
+        <div className="w-10 h-10 rounded-md shadow-sm flex items-center justify-center overflow-hidden">
+          <img 
+            src="/assets/scratch-cat.png" 
+            alt={sprite.name}
+            className="w-full h-full object-contain"
+            style={{ 
+              filter: sprite.id !== "sprite-1" ? `hue-rotate(${parseInt(sprite.color.slice(1), 16) % 360}deg)` : "" 
+            }}
+          />
         </div>
         <div className="flex-1">
           <h3 className="font-medium text-gray-800">{sprite.name}</h3>

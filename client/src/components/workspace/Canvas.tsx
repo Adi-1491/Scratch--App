@@ -315,11 +315,18 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
             className="absolute"
             style={getPositionStyle(sprite.x, sprite.y, sprite.direction - 90)}
           >
-            <div 
-              className="w-12 h-12 rounded-full shadow-md flex items-center justify-center"
-              style={{ backgroundColor: sprite.color }}
-            >
-              <span className="text-white font-bold">{sprite.name.charAt(0)}</span>
+            <div className="sprite-image-container relative">
+              <img 
+                src="/assets/scratch-cat.png" 
+                alt={sprite.name}
+                className="w-16 h-16 object-contain"
+                style={{ 
+                  filter: sprite.id !== "sprite-1" ? `hue-rotate(${parseInt(sprite.color.slice(1), 16) % 360}deg)` : "" 
+                }}
+              />
+              <div className="absolute -bottom-2 left-0 right-0 text-center">
+                <span className="text-xs font-medium bg-white bg-opacity-70 px-1 rounded">{sprite.name}</span>
+              </div>
             </div>
           </div>
         ))}
