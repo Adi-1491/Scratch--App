@@ -3,7 +3,8 @@ import { useBlocks } from "@/contexts/BlocksContext";
 import { useSprites } from "@/contexts/SpritesContext";
 import MotionBlock from "@/components/blocks/MotionBlock";
 import ControlBlock from "@/components/blocks/ControlBlock";
-import { BlockType, MotionBlockAction, ControlBlockAction } from "@/utils/blockTypes";
+import LookBlock from "@/components/blocks/LookBlock";
+import { BlockType, MotionBlockAction, ControlBlockAction, LookBlockAction } from "@/utils/blockTypes";
 
 interface ProgramAreaProps {
   currentSpriteId: string;
@@ -69,6 +70,19 @@ const ProgramArea: React.FC<ProgramAreaProps> = ({ currentSpriteId }) => {
             defaultDegrees={block.params?.degrees || 15}
             defaultX={block.params?.x || 0}
             defaultY={block.params?.y || 0}
+          />
+        );
+      } else if (block.type === BlockType.LOOK) {
+        return (
+          <LookBlock
+            key={block.id}
+            type={block.action as LookBlockAction}
+            placed={true}
+            blockId={block.id}
+            parentId={parentId}
+            index={index}
+            defaultMessage={block.params?.message || "Hello!"}
+            defaultSeconds={block.params?.seconds || 2}
           />
         );
       } else if (block.type === BlockType.CONTROL) {

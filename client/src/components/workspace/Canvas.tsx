@@ -31,9 +31,19 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
   
   // Reset execution state when positions are reset
   useEffect(() => {
+    // Create a dependency string outside the effect to avoid infinite loop
+    const spritePosString = JSON.stringify(
+      sprites.map(s => ({
+        id: s.id,
+        x: s.x,
+        y: s.y,
+        direction: s.direction
+      }))
+    );
+    
     // This will clear execution state when sprites change, including resets
     setExecutionState({});
-  }, [sprites.map(s => `${s.x}-${s.y}-${s.direction}`).join('|')]);
+  }, [sprites.length]); // Only react to sprite array length changes
   
   // State to track collision indications
   const [collisionIndication, setCollisionIndication] = useState<{ 
@@ -67,7 +77,8 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
   
   // Update the ref when programBlocks changes
   useEffect(() => {
-    programBlocksRef.current = programBlocks;
+    // Use a deep copy to avoid reference issues
+    programBlocksRef.current = JSON.parse(JSON.stringify(programBlocks));
   }, [programBlocks]);
   
   useEffect(() => {
@@ -258,7 +269,7 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
       // Clear all speech bubbles
       setSpeechBubbles({});
     }
-  }, [isPlaying, speechBubbles]);
+  }, [isPlaying]); // Only react to isPlaying changes
   
   const executeSpriteProgram = (spriteId: string, blocks: any[]) => {
     const sprite = sprites.find(s => s.id === spriteId);
