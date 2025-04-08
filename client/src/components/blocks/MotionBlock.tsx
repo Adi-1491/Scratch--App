@@ -110,6 +110,15 @@ const MotionBlock: React.FC<MotionBlockProps> = ({
     }
   };
 
+  // Handle deleting the block
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (blockId) {
+      removeBlock(blockId);
+    }
+  };
+
   const renderBlockContent = () => {
     switch (type) {
       case MotionBlockAction.MOVE:
@@ -185,10 +194,23 @@ const MotionBlock: React.FC<MotionBlockProps> = ({
         draggable
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        className="block bg-motion text-white p-3 rounded-lg shadow-sm cursor-grab"
+        className="block bg-motion text-white p-3 rounded-lg shadow-sm cursor-grab relative"
       >
         {renderBlockContent()}
         <div className="block-notch"></div>
+        
+        {/* Delete button - only show for placed blocks */}
+        {placed && blockId && (
+          <button
+            onClick={handleDelete}
+            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition-colors shadow-sm"
+            title="Remove block"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </button>
+        )}
       </div>
     </div>
   );
