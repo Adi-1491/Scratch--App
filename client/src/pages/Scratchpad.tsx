@@ -10,6 +10,7 @@ import SpriteProperties from "@/components/sprites/SpriteProperties";
 import { useSprites } from "@/contexts/SpritesContext";
 import { useBlocks } from "@/contexts/BlocksContext";
 import { MotionBlockAction, ControlBlockAction } from "@/utils/blockTypes";
+import { toast } from "@/hooks/use-toast";
 
 const Scratchpad: React.FC = () => {
   const { sprites, resetSpritePositions } = useSprites();
@@ -24,8 +25,20 @@ const Scratchpad: React.FC = () => {
 
   const handleStop = () => {
     setIsPlaying(false);
-    // No longer resetting sprite positions
+    // We don't reset positions automatically when stopping anymore
     // This allows sprites to maintain their positions when the animation stops
+  };
+  
+  const handleReset = () => {
+    // Reset sprite positions to their original values
+    resetSpritePositions();
+    setIsPlaying(false);
+    // Show a toast notification to inform the user
+    toast({
+      title: "Reset Complete",
+      description: "All sprites have been reset to their original positions.",
+      variant: "default",
+    });
   };
 
   const handleCollision = (sprite1Id: string, sprite2Id: string) => {
@@ -35,7 +48,7 @@ const Scratchpad: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
-      <Header isPlaying={isPlaying} onPlay={handlePlay} onStop={handleStop} />
+      <Header isPlaying={isPlaying} onPlay={handlePlay} onStop={handleStop} onReset={handleReset} />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Blocks Palette */}

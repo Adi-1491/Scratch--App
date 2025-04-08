@@ -4,9 +4,10 @@ interface HeaderProps {
   isPlaying: boolean;
   onPlay: () => void;
   onStop: () => void;
+  onReset: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ isPlaying, onPlay, onStop }) => {
+const Header: React.FC<HeaderProps> = ({ isPlaying, onPlay, onStop, onReset }) => {
   // Handle play/stop button click
   const handlePlayStopClick = () => {
     if (isPlaying) {
@@ -72,7 +73,7 @@ const Header: React.FC<HeaderProps> = ({ isPlaying, onPlay, onStop }) => {
         </button>
         <button
           id="reset-btn"
-          onClick={onStop}
+          onClick={onReset}
           className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 shadow-sm transition"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

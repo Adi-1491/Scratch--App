@@ -29,6 +29,12 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
   // State to track execution of blocks to avoid continuous movement
   const [executionState, setExecutionState] = useState<SpriteExecutionState>({});
   
+  // Reset execution state when positions are reset
+  useEffect(() => {
+    // This will clear execution state when sprites change, including resets
+    setExecutionState({});
+  }, [sprites.map(s => `${s.x}-${s.y}-${s.direction}`).join('|')]);
+  
   // State to track collision indications
   const [collisionIndication, setCollisionIndication] = useState<{ 
     x: number, 
