@@ -1,6 +1,7 @@
 export enum BlockType {
   MOTION = "MOTION",
-  CONTROL = "CONTROL"
+  CONTROL = "CONTROL",
+  LOOK = "LOOK"
 }
 
 export enum MotionBlockAction {
@@ -13,12 +14,19 @@ export enum ControlBlockAction {
   REPEAT = "REPEAT"
 }
 
+export enum LookBlockAction {
+  SAY = "SAY",
+  SAY_FOR_SECONDS = "SAY_FOR_SECONDS"
+}
+
 export interface BlockParams {
   steps?: number;
   degrees?: number;
   x?: number;
   y?: number;
   repeatCount?: number;
+  message?: string;
+  seconds?: number;
 }
 
 export interface MotionBlock {
@@ -31,7 +39,13 @@ export interface ControlBlock {
   type: BlockType.CONTROL;
   action: ControlBlockAction;
   params: BlockParams;
-  children?: (MotionBlock | ControlBlock)[];
+  children?: (MotionBlock | ControlBlock | LookBlock)[];
 }
 
-export type Block = MotionBlock | ControlBlock;
+export interface LookBlock {
+  type: BlockType.LOOK;
+  action: LookBlockAction;
+  params: BlockParams;
+}
+
+export type Block = MotionBlock | ControlBlock | LookBlock;

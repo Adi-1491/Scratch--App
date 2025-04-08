@@ -46,6 +46,15 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
     visible: false
   });
   
+  // State for speech bubbles
+  const [speechBubbles, setSpeechBubbles] = useState<{
+    [spriteId: string]: {
+      message: string;
+      visible: boolean;
+      timeoutId?: NodeJS.Timeout;
+    }
+  }>({});
+  
   // State to track recently collided sprites to prevent multiple swaps
   const [recentlyCollidedPairs, setRecentlyCollidedPairs] = useState<Set<string>>(new Set());
   
@@ -236,6 +245,21 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
   // We've removed the automatic position reset when stopping
   // This allows the sprites to maintain their positions when the program is stopped
   
+  // Clear all speech bubbles when stopping the program
+  useEffect(() => {
+    if (!isPlaying) {
+      // Clear all timeouts to prevent memory leaks
+      Object.values(speechBubbles).forEach(bubble => {
+        if (bubble.timeoutId) {
+          clearTimeout(bubble.timeoutId);
+        }
+      });
+      
+      // Clear all speech bubbles
+      setSpeechBubbles({});
+    }
+  }, [isPlaying, speechBubbles]);
+  
   const executeSpriteProgram = (spriteId: string, blocks: any[]) => {
     const sprite = sprites.find(s => s.id === spriteId);
     if (!sprite) return;
@@ -284,6 +308,81 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
               
             case "GOTO":
               updateSpritePosition(sprite.id, block.params.x, block.params.y);
+              
+              // Mark as executed
+              setExecutionState(prev => ({
+                ...prev,
+                [spriteId]: {
+                  ...prev[spriteId],
+                  [block.id]: { ...prev[spriteId]?.[block.id], executed: true }
+                }
+              }));
+              break;
+          }
+          break;
+          
+        case "LOOK":
+          switch (block.action) {
+            case "SAY":
+              // Make the sprite say something
+              const message = block.params.message || "Hello!";
+              
+              // Clear any existing timeouts
+              if (speechBubbles[spriteId]?.timeoutId) {
+                clearTimeout(speechBubbles[spriteId].timeoutId);
+              }
+              
+              // Display the speech bubble
+              setSpeechBubbles(prev => ({
+                ...prev,
+                [spriteId]: {
+                  message,
+                  visible: true,
+                  timeoutId: undefined
+                }
+              }));
+              
+              // Mark as executed
+              setExecutionState(prev => ({
+                ...prev,
+                [spriteId]: {
+                  ...prev[spriteId],
+                  [block.id]: { ...prev[spriteId]?.[block.id], executed: true }
+                }
+              }));
+              break;
+              
+            case "SAY_FOR_SECONDS":
+              // Make the sprite say something for a specific time
+              const tempMessage = block.params.message || "Hello!";
+              const seconds = block.params.seconds || 2;
+              
+              // Clear any existing timeouts
+              if (speechBubbles[spriteId]?.timeoutId) {
+                clearTimeout(speechBubbles[spriteId].timeoutId);
+              }
+              
+              // Create a new timeout
+              const timeoutId = setTimeout(() => {
+                setSpeechBubbles(prev => ({
+                  ...prev,
+                  [spriteId]: {
+                    ...prev[spriteId],
+                    visible: false,
+                    timeoutId: undefined
+                  }
+                }));
+              }, seconds * 1000);
+              
+              // Display the speech bubble
+              setSpeechBubbles(prev => ({
+                ...prev,
+                [spriteId]: {
+                  message: tempMessage,
+                  visible: true,
+                  timeoutId
+                }
+              }));
               
               // Mark as executed
               setExecutionState(prev => ({
@@ -396,6 +495,28 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
             className="absolute"
             style={getPositionStyle(sprite.x, sprite.y, sprite.direction - 90)}
           >
+            {/* Speech bubble */}
+            {speechBubbles[sprite.id]?.visible && (
+              <div 
+                className="absolute -top-14 left-0 bg-purple-500 text-white rounded-lg p-2 min-w-28 text-center"
+                style={{
+                  transform: 'translateX(-25%)',
+                  filter: 'none', // Override any hue-rotate from the sprite
+                }}
+              >
+                <div className="text-xs font-medium">
+                  {speechBubbles[sprite.id]?.message}
+                </div>
+                <div 
+                  className="absolute -bottom-2 left-1/4 w-0 h-0 border-8"
+                  style={{
+                    borderColor: 'transparent',
+                    borderTopColor: '#8b5cf6', // Purple-500
+                  }}
+                />
+              </div>
+            )}
+            
             <div className="sprite-image-container relative">
               <img 
                 src="/assets/scratch-cat.png" 

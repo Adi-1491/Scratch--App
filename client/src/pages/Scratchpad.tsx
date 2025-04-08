@@ -3,13 +3,14 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import MotionBlock from "@/components/blocks/MotionBlock";
 import ControlBlock from "@/components/blocks/ControlBlock";
+import LookBlock from "@/components/blocks/LookBlock";
 import ProgramArea from "@/components/workspace/ProgramArea";
 import Canvas from "@/components/workspace/Canvas";
 import SpriteList from "@/components/sprites/SpriteList";
 import SpriteProperties from "@/components/sprites/SpriteProperties";
 import { useSprites } from "@/contexts/SpritesContext";
 import { useBlocks } from "@/contexts/BlocksContext";
-import { MotionBlockAction, ControlBlockAction } from "@/utils/blockTypes";
+import { MotionBlockAction, ControlBlockAction, LookBlockAction } from "@/utils/blockTypes";
 import { toast } from "@/hooks/use-toast";
 
 const Scratchpad: React.FC = () => {
@@ -67,6 +68,15 @@ const Scratchpad: React.FC = () => {
               <MotionBlock type={MotionBlockAction.MOVE} />
               <MotionBlock type={MotionBlockAction.TURN} />
               <MotionBlock type={MotionBlockAction.GOTO} />
+            </div>
+            
+            <div className="mb-4">
+              <h3 className="text-sm font-medium text-purple-500 uppercase tracking-wider mb-2">
+                Looks
+              </h3>
+              
+              <LookBlock type={LookBlockAction.SAY} />
+              <LookBlock type={LookBlockAction.SAY_FOR_SECONDS} />
             </div>
             
             <div className="mb-4">
