@@ -86,18 +86,24 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
     }
   }, [isPlaying]);
   
+  // Create refs for sprites and execution state to avoid dependency issues
+  const spritesRef = useRef(sprites);
+  const executionStateRef = useRef(executionState);
+  
+  // Keep the refs updated
+  useEffect(() => {
+    spritesRef.current = sprites;
+  }, [sprites]);
+  
+  useEffect(() => {
+    executionStateRef.current = executionState;
+  }, [executionState]);
+  
   // Update sprite positions based on their running programs
   useEffect(() => {
     if (!isPlaying) {
       return;
     }
-
-    // Use refs to avoid dependency issues
-    const spritesRef = useRef(sprites);
-    const executionStateRef = useRef(executionState);
-    
-    spritesRef.current = sprites;
-    executionStateRef.current = executionState;
 
     const animationIntervals: NodeJS.Timeout[] = [];
     
