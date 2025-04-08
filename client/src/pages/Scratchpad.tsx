@@ -24,7 +24,8 @@ const Scratchpad: React.FC = () => {
 
   const handleStop = () => {
     setIsPlaying(false);
-    resetSpritePositions();
+    // No longer resetting sprite positions
+    // This allows sprites to maintain their positions when the animation stops
   };
 
   const handleCollision = (sprite1Id: string, sprite2Id: string) => {

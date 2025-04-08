@@ -42,13 +42,21 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   
   // Reset execution state when play/stop state changes
+  // Using a ref to avoid the maximum update depth error
+  const programBlocksRef = useRef(programBlocks);
+  
+  // Update the ref when programBlocks changes
+  useEffect(() => {
+    programBlocksRef.current = programBlocks;
+  }, [programBlocks]);
+  
   useEffect(() => {
     if (isPlaying) {
       // Initialize execution state for all blocks
       const newState: SpriteExecutionState = {};
       
       // Set all blocks to not executed yet
-      Object.keys(programBlocks).forEach(spriteId => {
+      Object.keys(programBlocksRef.current).forEach(spriteId => {
         newState[spriteId] = {};
         
         const initializeBlockState = (blocks: any[]) => {
@@ -66,7 +74,7 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
           });
         };
         
-        initializeBlockState(programBlocks[spriteId] || []);
+        initializeBlockState(programBlocksRef.current[spriteId] || []);
       });
       
       setExecutionState(newState);
@@ -74,9 +82,9 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
       // Reset execution state when stopped
       setExecutionState({});
       // Clear collision indication
-      setCollisionIndication({ ...collisionIndication, visible: false });
+      setCollisionIndication(prev => ({ ...prev, visible: false }));
     }
-  }, [isPlaying, programBlocks]);
+  }, [isPlaying]);
   
   // Update sprite positions based on their running programs
   useEffect(() => {
@@ -84,12 +92,19 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
       return;
     }
 
+    // Use refs to avoid dependency issues
+    const spritesRef = useRef(sprites);
+    const executionStateRef = useRef(executionState);
+    
+    spritesRef.current = sprites;
+    executionStateRef.current = executionState;
+
     const animationIntervals: NodeJS.Timeout[] = [];
     
     // Set up animation loops for each sprite
     sprites.forEach(sprite => {
       // Get blocks assigned to this sprite
-      const spriteBlocks = programBlocks[sprite.id] || [];
+      const spriteBlocks = programBlocksRef.current[sprite.id] || [];
       
       if (spriteBlocks.length > 0) {
         const interval = setInterval(() => {
@@ -100,7 +115,7 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
           executeSpriteProgram(sprite.id, spriteBlocks);
           
           // Check for collisions with other sprites
-          sprites.forEach(otherSprite => {
+          spritesRef.current.forEach(otherSprite => {
             if (otherSprite.id !== sprite.id) {
               if (detectCollision(sprite, otherSprite)) {
                 // Show collision indication
@@ -132,14 +147,10 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
       // Clean up all animation intervals when the component unmounts or isPlaying changes
       animationIntervals.forEach(interval => clearInterval(interval));
     };
-  }, [isPlaying, sprites, programBlocks, onCollision, executionState]);
+  }, [isPlaying, sprites, onCollision]);
   
-  // Handler for stopping - ensure positions are reset
-  useEffect(() => {
-    if (!isPlaying) {
-      resetSpritePositions();
-    }
-  }, [isPlaying, resetSpritePositions]);
+  // We've removed the automatic position reset when stopping
+  // This allows the sprites to maintain their positions when the program is stopped
   
   const executeSpriteProgram = (spriteId: string, blocks: any[]) => {
     const sprite = sprites.find(s => s.id === spriteId);
