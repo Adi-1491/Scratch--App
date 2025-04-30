@@ -9,7 +9,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ isPlaying, onPlay, onStop, onReset }) => {
   // Handle play/stop button click
-  const handlePlayStopClick = () => {
+  const handlePlayStopClick: () => void = () => {
     if (isPlaying) {
       onStop(); // If playing, stop the program
     } else {

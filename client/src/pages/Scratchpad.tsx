@@ -125,7 +125,11 @@ const Scratchpad: React.FC = () => {
             
             {/* Canvas area */}
             <div className="w-full sm:w-1/2 p-4 overflow-y-auto bg-gray-50 border-l border-gray-200">
-              <Canvas isPlaying={isPlaying} onCollision={handleCollision} />
+              <Canvas 
+                isPlaying={isPlaying} 
+                onCollision={handleCollision} 
+                activeSprite={currentSpriteId}  // Pass the current sprite ID as the activeSprite prop
+              />
             </div>
           </div>
         </div>

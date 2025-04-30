@@ -8,6 +8,7 @@ import { toast } from "@/hooks/use-toast";
 interface CanvasProps {
   isPlaying: boolean;
   onCollision: (sprite1Id: string, sprite2Id: string) => void;
+  activeSprite: string; // Add active sprite prop to track which sprite is currently selected
 }
 
 // Track execution state for each sprite's blocks
@@ -21,13 +22,17 @@ interface SpriteExecutionState {
   };
 }
 
-const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
+const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision, activeSprite }) => {
   const { sprites, updateSpritePosition, resetSpritePositions } = useSprites();
   const { programBlocks, swapSpriteAnimations } = useBlocks();
   const canvasRef = useRef<HTMLDivElement>(null);
   
   // State to track execution of blocks to avoid continuous movement
   const [executionState, setExecutionState] = useState<SpriteExecutionState>({});
+  
+  // State to track which sprites have active programs running
+  // Using an array instead of a Set to avoid TypeScript iteration issues
+  const [activeSpritePrograms, setActiveSpritePrograms] = useState<string[]>([]);
   
   // Reset execution state when positions are reset
   useEffect(() => {
@@ -66,7 +71,8 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
   }>({});
   
   // State to track recently collided sprites to prevent multiple swaps
-  const [recentlyCollidedPairs, setRecentlyCollidedPairs] = useState<Set<string>>(new Set());
+  // Using an array instead of a Set to avoid TypeScript iteration issues
+  const [recentlyCollidedPairs, setRecentlyCollidedPairs] = useState<string[]>([]);
   
   // State for coordinate display
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -81,17 +87,33 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
     programBlocksRef.current = JSON.parse(JSON.stringify(programBlocks));
   }, [programBlocks]);
   
+  // Track the active sprite to ensure actions are isolated
+  const activeSpritePrevRef = useRef<string | null>(null);
+  
   useEffect(() => {
     if (isPlaying) {
-      // Initialize execution state for all blocks
-      const newState: SpriteExecutionState = {};
+      // Store which sprite is active when the program starts running
+      if (activeSprite && !activeSpritePrograms.includes(activeSprite)) {
+        setActiveSpritePrograms(prev => [...prev, activeSprite]);
+      }
       
-      // Set all blocks to not executed yet
-      Object.keys(programBlocksRef.current).forEach(spriteId => {
-        newState[spriteId] = {};
+      // Initialize execution state for all blocks, but only for the active sprites
+      const newState: SpriteExecutionState = {...executionState};
+      
+      // Only initialize blocks for sprites that are active
+      [...activeSpritePrograms, activeSprite].forEach(spriteId => {
+        if (!spriteId || !programBlocksRef.current[spriteId]) return;
+        
+        if (!newState[spriteId]) {
+          newState[spriteId] = {};
+        }
         
         const initializeBlockState = (blocks: any[]) => {
+          if (!blocks) return;
+          
           blocks.forEach(block => {
+            if (!block) return;
+            
             newState[spriteId][block.id] = { 
               executed: false,
               repeatCount: block.params?.repeatCount || 1,
@@ -109,21 +131,23 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
       });
       
       setExecutionState(newState);
-      // Clear recently collided pairs when starting the program
-      setRecentlyCollidedPairs(new Set());
     } else {
       // Reset execution state when stopped
       setExecutionState({});
-      // Clear collision indication
-      setCollisionIndication(prev => ({ ...prev, visible: false }));
       // Clear recently collided pairs
-      setRecentlyCollidedPairs(new Set());
+      setRecentlyCollidedPairs([]);
+      // Clear active sprite programs when stopping
+      setActiveSpritePrograms([]);
     }
-  }, [isPlaying]);
+    
+    // Update the previous active sprite ref
+    activeSpritePrevRef.current = activeSprite;
+  }, [isPlaying, activeSprite]);
   
   // Create refs for sprites and execution state to avoid dependency issues
   const spritesRef = useRef(sprites);
   const executionStateRef = useRef(executionState);
+  const activeSpritesProgramsRef = useRef(activeSpritePrograms);
   
   // Keep the refs updated
   useEffect(() => {
@@ -133,6 +157,10 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
   useEffect(() => {
     executionStateRef.current = executionState;
   }, [executionState]);
+  
+  useEffect(() => {
+    activeSpritesProgramsRef.current = activeSpritePrograms;
+  }, [activeSpritePrograms]);
   
   // Function to handle collision swap
   const handleCollisionSwap = useCallback((sprite1Id: string, sprite2Id: string) => {
@@ -146,7 +174,7 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
     const collisionPairId = `${spritePair[0]}-${spritePair[1]}`;
     
     // Only swap animations if we haven't already for this collision pair
-    if (!recentlyCollidedPairs.has(collisionPairId)) {
+    if (!recentlyCollidedPairs.includes(collisionPairId)) {
       // Swap the animations between the two sprites
       swapSpriteAnimations(sprite1Id, sprite2Id);
       
@@ -158,11 +186,7 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
       });
       
       // Mark this pair as recently collided to prevent multiple swaps
-      setRecentlyCollidedPairs(prev => {
-        const newSet = new Set(prev);
-        newSet.add(collisionPairId);
-        return newSet;
-      });
+      setRecentlyCollidedPairs(prev => [...prev, collisionPairId]);
       
       // Reset the execution state to run the swapped blocks
       setExecutionState(prevState => {
@@ -202,48 +226,51 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
 
     const animationIntervals: NodeJS.Timeout[] = [];
     
-    // Set up animation loops for each sprite
+    // Set up animation loops for each sprite, BUT only for sprites that were active when "Run Program" was clicked
     sprites.forEach(sprite => {
-      // Get blocks assigned to this sprite
-      const spriteBlocks = programBlocksRef.current[sprite.id] || [];
-      
-      if (spriteBlocks.length > 0) {
-        const interval = setInterval(() => {
-          // Skip execution if playing state has changed
-          if (!isPlaying) return;
-          
-          // Execute sprite's program
-          executeSpriteProgram(sprite.id, spriteBlocks);
-          
-          // Check for collisions with other sprites
-          spritesRef.current.forEach(otherSprite => {
-            if (otherSprite.id !== sprite.id) {
-              if (detectCollision(sprite, otherSprite)) {
-                // Show collision indication
-                const collisionX = (sprite.x + otherSprite.x) / 2;
-                const collisionY = (sprite.y + otherSprite.y) / 2;
-                
-                setCollisionIndication({
-                  x: collisionX,
-                  y: collisionY,
-                  visible: true
-                });
-                
-                onCollision(sprite.id, otherSprite.id);
-                
-                // Handle collision swap using our extracted function
-                handleCollisionSwap(sprite.id, otherSprite.id);
-                
-                // Hide collision indication after 1 second
-                setTimeout(() => {
-                  setCollisionIndication(prev => ({ ...prev, visible: false }));
-                }, 1000);
-              }
-            }
-          });
-        }, 100);
+      // Only process sprites that are in our active programs array
+      if (activeSpritesProgramsRef.current.includes(sprite.id)) {
+        // Get blocks assigned to this sprite
+        const spriteBlocks = programBlocksRef.current[sprite.id] || [];
         
-        animationIntervals.push(interval);
+        if (spriteBlocks.length > 0) {
+          const interval = setInterval(() => {
+            // Skip execution if playing state has changed
+            if (!isPlaying) return;
+            
+            // Execute sprite's program
+            executeSpriteProgram(sprite.id, spriteBlocks);
+            
+            // Check for collisions with other sprites
+            spritesRef.current.forEach(otherSprite => {
+              if (otherSprite.id !== sprite.id) {
+                if (detectCollision(sprite, otherSprite)) {
+                  // Show collision indication
+                  const collisionX = (sprite.x + otherSprite.x) / 2;
+                  const collisionY = (sprite.y + otherSprite.y) / 2;
+                  
+                  setCollisionIndication({
+                    x: collisionX,
+                    y: collisionY,
+                    visible: true
+                  });
+                  
+                  onCollision(sprite.id, otherSprite.id);
+                  
+                  // Handle collision swap using our extracted function
+                  handleCollisionSwap(sprite.id, otherSprite.id);
+                  
+                  // Hide collision indication after 1 second
+                  setTimeout(() => {
+                    setCollisionIndication(prev => ({ ...prev, visible: false }));
+                  }, 1000);
+                }
+              }
+            });
+          }, 100);
+          
+          animationIntervals.push(interval);
+        }
       }
     });
     
@@ -251,10 +278,7 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
       // Clean up all animation intervals when the component unmounts or isPlaying changes
       animationIntervals.forEach(interval => clearInterval(interval));
     };
-  }, [isPlaying, sprites, onCollision, handleCollisionSwap]);
-  
-  // We've removed the automatic position reset when stopping
-  // This allows the sprites to maintain their positions when the program is stopped
+  }, [isPlaying, sprites, onCollision, handleCollisionSwap, activeSpritePrograms]);
   
   // Clear all speech bubbles when stopping the program
   useEffect(() => {
@@ -274,6 +298,11 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
   const executeSpriteProgram = (spriteId: string, blocks: any[]) => {
     const sprite = sprites.find(s => s.id === spriteId);
     if (!sprite) return;
+    
+    // Skip if this sprite is not in our active programs list
+    if (!activeSpritesProgramsRef.current.includes(spriteId)) {
+      return;
+    }
     
     blocks.forEach(block => {
       // Skip if this block has already been executed
@@ -362,8 +391,6 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
                 }
               }));
               break;
-              
-
           }
           break;
           
@@ -463,7 +490,7 @@ const Canvas: React.FC<CanvasProps> = ({ isPlaying, onCollision }) => {
           <div 
             key={sprite.id}
             id={`sprite-${sprite.id}`}
-            className="absolute"
+            className={`absolute ${sprite.id === activeSprite ? 'ring-2 ring-blue-400' : ''}`}
             style={getPositionStyle(sprite.x, sprite.y, sprite.direction - 90)}
           >
             {/* Speech bubble */}

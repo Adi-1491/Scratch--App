@@ -30,4 +30,8 @@ export default defineConfig({
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
   },
+  server: {
+    host: true, // this allows network access
+    allowedHosts: ['dcd5-36-255-84-63.ngrok-free.app'],
+  },
 });
